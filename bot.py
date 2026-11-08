@@ -18,7 +18,7 @@ from aiogram.types import (
 import os
 TOKEN = os.environ.get('BOT_TOKEN', '')
 API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec';  # ссылка из script.google
-WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=5' # ссылка из Netlify
+WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=6' # ссылка из Netlify
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
