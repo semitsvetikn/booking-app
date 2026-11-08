@@ -17,7 +17,7 @@ TOKEN = os.environ.get('BOT_TOKEN', '')
 # Bot Settings → Menu Button → https://dazzling-tarsier-eb2361.netlify.app/?v=10
 #
 # На случай, если ссылки понадобятся снова:
-# API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec'
+# API_URL = 'https://script.google.com/macros/s/AKfycbwyUzCYsnpB8FBdNWM4KEWQD3qp-FTUUUP-QfveWIzGryXBMxpkvTRcTe3Jux-Rv71n1A/exec'
 # WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=10'
 
 bot = Bot(token=TOKEN)
