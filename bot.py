@@ -1,24 +1,16 @@
 import asyncio
-import json
-
-import aiohttp
+import os
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import (
-    KeyboardButton,
-    Message,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
-    WebAppInfo,
-)
+from aiogram.types import Message
 
 # ====== НАСТРОЙКИ
 
 import os
 TOKEN = os.environ.get('BOT_TOKEN', '')
 API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec';  # ссылка из script.google
-WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=7' # ссылка из Netlify
+WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=8' # ссылка из Netlify
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
