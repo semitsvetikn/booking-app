@@ -17,8 +17,8 @@ from aiogram.types import (
 
 import os
 TOKEN = os.environ.get('BOT_TOKEN', '')
-API_URL = 'https://script.google.com/macros/s/AKfycby4umdZTbo51qy6HYdXRFXjeRfR0aq_SHEY5lV_3s4scbolsLrNKvUs-aK9UEdWMnzyVw/exec';
-WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app'  # ссылка из шага 4 (Netlify/Vercel)
+API_URL = 'https://script.google.com/macros/s/AKfycbwrcjCpie8Nf6vqSWDHXk-rE8UP7t_1TdWibVXdMi4Uok51VQ1nicYH5XU-AymiBj8lmA/exec';  # ссылка из script.google
+WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=2' # ссылка из Netlify
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -52,8 +52,7 @@ async def help_cmd(message: Message):
         '1. Нажмите кнопку «Забронировать» слева — откроется мини-апп.\n'
         '2. Выберите направление, время и впишите название команды.\n'
         '3. Нажмите «Забронировать» — вернётесь в чат.\n'
-        '4. Нажмите «Поделиться контактом 📱» — и слот ваш.\n\n'
-        '⏳ Слот закрепляется только после отправки контакта.\n'
+        '⏳ Слот закрепляется только после отправки.\n'
         '🔄 Начать заново: /start'
     )
 
