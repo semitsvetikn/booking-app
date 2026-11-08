@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <title>Бронирование слотов</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
+    h2 { margin-top: 0; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tabs button { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #8888aa55; background: var(--tg-theme-secondary-bg-color, #f0f0f0); color: var(--tg-theme-text-color, #000); }
+    .tabs button.active { background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border-color: transparent; }
+    select { width: 100%; padding: 10px; margin: 12px 0; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; }
+    .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+    .slot { padding: 10px 8px; border-radius: 8px; border: 1px solid #8888aa55; text-align: center; cursor: pointer; background: var(--tg-theme-secondary-bg-color, #f0f0f0); color: var(--tg-theme-text-color, #000); }
+    .slot.selected { background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border-color: transparent; }
+    #form { margin-top: 16px; display: none; }
+    #form input { width: 100%; padding: 10px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ccc; margin-bottom: 8px; font-size: 16px; }
+    #form button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); font-size: 16px; }
+    #form button:disabled { opacity: 0.6; }
+    .hidden { display: none !important; }
+    #msg { margin-top: 8px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h2>Бронирование слотов</h2>
+
+  <!-- Шаг 1: направление -->
+  <div class="tabs">
+    <button id="tab-Эффективность" onclick="showSheet('Эффективность')" class="active">Эффективность</button>
+    <button id="tab-Финтех" onclick="showSheet('Финтех')">Финтех</button>
+  </div>
+
+  <!-- Шаг 2: дата (появляется, только если в таблице есть даты) -->
+  <select id="date-select" class="hidden" onchange="filterByDate()">
+    <option value="">Выберите дату</option>
+  </select>
+
+  <!-- Шаг 3: время -->
+  <div id="slots" class="slot-grid hidden"></div>
+
+  <!-- Шаг 4: данные команды -->
+  <div id="form">
+    <input id="team" placeholder="Название команды">
+    <input id="telegram" placeholder="Ваш Telegram (@username или телефон)">
+    <button id="book-btn" onclick="book()">Забронировать</button>
+    <p id="msg"></p>
+  </div>
+
+  <script>
+    // === ВСТАВЬТЕ СЮДА ВАШ URL СКРИПТА ИЗ ШАГА 3 ===
+    // Нужен только для показа списка свободных слотов.
+    // Бронирование идёт через бота, не через этот URL.
+    const API = 'https://script.google.com/macros/s/AKfycby4umdZTbo51qy6HYdXRFXjeRfR0aq_SHEY5lV_3s4scbolsLrNKvUs-aK9UEdWMnzyVw/exec';
+
+    const tg = Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    let allSlots = [];
+    let currentSheet = 'Эффективность';
+    let chosenSlot = null;
+
+    // Обработчик главной кнопки — навешиваем ОДИН раз при старте
+    tg.MainButton.onClick(book);
+
+    // Загрузка свободных слотов
+    fetch(API)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          showError('Ошибка загрузки слотов');
+          return;
+        }
+        // Нормализуем один раз при загрузке: чистая дата и чистое время
+        allSlots = data.slots.map(normalizeSlot);
+        showSheet(currentSheet);
+      })
+      .catch(err => {
+        console.error(err);
+        showError('Не удалось получить слоты. Проверьте URL скрипта.');
+      });
+
+    function showError(text) {
+      const el = document.getElementById('slots');
+      el.classList.remove('hidden');
+      el.innerHTML = '<p style="color:red">' + text + '</p>';
+    }
+
+    // ===== Нормализация данных из таблицы =====
+
+    function normalizeSlot(s) {
+      const date = extractDate(s.date);
+      let time = extractTime(s.time);
+
+      // Если ячейка времени пуста — пробуем достать время из ячейки с датой.
+      // «00:00» отбрасываем: это признак ячейки «только дата, без времени».
+      if (!time) {
+        const t = extractTime(s.date);
+        if (t && t !== '00:00') time = t;
+      }
+
+      return { sheet: s.sheet, row: s.row, date: date, time: time };
+    }
+
+    // Время: «Sat Dec 30 1899 14:00:00 GMT+0300...» → «14:00»
+    function extractTime(v) {
+      const s = String(v || '');
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (m) {
+        return ('0' + m[1]).slice(-2) + ':' + m[2];
+      }
+      return s.trim();
+    }
+
+    // Дата: «Tue Nov 10 2026 00:00:00 GMT+0300» → «2026-11-10»
+    // «2026-11-10» → «2026-11-10»; «10.11.2026» → «2026-11-10»
+    // Годы ≤ 1900 («Sat Dec 30 1899...») считаем «времени без даты» → пусто
+    function extractDate(v) {
+      const s = String(v || '').trim();
+      if (!s) return '';
+
+      const months = {
+        Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
+        Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12
+      };
+
+      const mEng = s.match(/\b([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{4})\b/);
+      if (mEng && months[mEng[1]]) {
+        if (Number(mEng[3]) <= 1900) return '';
+        return mEng[3] + '-' + ('0' + months[mEng[1]]).slice(-2) + '-' + ('0' + mEng[2]).slice(-2);
+      }
+
+      const mIso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (mIso) {
+        if (Number(mIso[1]) <= 1900) return '';
+        return mIso[1] + '-' + mIso[2] + '-' + mIso[3];
+      }
+
+      const mRu = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if (mRu) {
+        if (Number(mRu[3]) <= 1900) return '';
+        return mRu[3] + '-' + ('0' + mRu[2]).slice(-2) + '-' + ('0' + mRu[1]).slice(-2);
+      }
+
+      return '';
+    }
+
+    // Красивый формат даты: «10 ноября, пт»
+    function formatDate(d) {
+      const months = ['января','февраля','марта','апреля','мая','июня',
+                      'июля','августа','сентября','октября','ноября','декабря'];
+      const days = ['вс','пн','вт','ср','чт','пт','сб'];
+      const m = String(d).match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (!m) return d;
+      const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12);
+      return dt.getDate() + ' ' + months[dt.getMonth()] + ', ' + days[dt.getDay()];
+    }
+
+    // ===== Шаг 1: выбор направления =====
+    function showSheet(name) {
+      currentSheet = name;
+      chosenSlot = null;
+      document.getElementById('form').style.display = 'none';
+      document.getElementById('msg').textContent = '';
+      tg.MainButton.hide();
+
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+
+      const slots = allSlots.filter(s => s.sheet === name);
+      const select = document.getElementById('date-select');
+      const grid = document.getElementById('slots');
+
+      if (slots.length === 0) {
+        select.classList.add('hidden');
+        grid.classList.remove('hidden');
+        grid.innerHTML = '<p>Нет свободных слотов</p>';
+        return;
+      }
+
+      // Есть ли у слотов осмысленные даты?
+      const hasDates = slots.some(s => s.date !== '');
+
+      if (!hasDates) {
+        // Дат нет — сразу показываем сетку времени, без выбора даты
+        select.classList.add('hidden');
+        renderTimeGrid(slots);
+        return;
+      }
+
+      // Даты есть — выпадающий список
+      const dates = [...new Set(slots.map(s => s.date))].sort();
+      select.innerHTML = '<option value="">Выберите дату</option>';
+      dates.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = formatDate(d);
+        select.appendChild(opt);
+      });
+      select.classList.remove('hidden');
+      grid.classList.add('hidden');
+      grid.innerHTML = '';
+    }
+
+    // Отрисовка сетки времени
+    function renderTimeGrid(daySlots) {
+      const grid = document.getElementById('slots');
+      grid.innerHTML = '';
+      grid.classList.remove('hidden');
+
+      const usable = daySlots.filter(s => s.time);
+      if (usable.length === 0) {
+        grid.innerHTML = '<p>Нет свободных слотов</p>';
+        return;
+      }
+
+      usable.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'slot';
+        btn.textContent = s.time;
+        btn.onclick = () => pickSlot(s, btn);
+        grid.appendChild(btn);
+      });
+    }
+
+    // ===== Шаг 2: выбор времени по дате =====
+    function filterByDate() {
+      chosenSlot = null;
+      document.getElementById('form').style.display = 'none';
+      tg.MainButton.hide();
+
+      const date = document.getElementById('date-select').value;
+      if (!date) {
+        document.getElementById('slots').classList.add('hidden');
+        return;
+      }
+
+      const daySlots = allSlots.filter(s => s.sheet === currentSheet && s.date === date);
+      renderTimeGrid(daySlots);
+    }
+
+    // ===== Шаг 3: выбран слот — показываем форму =====
+    function pickSlot(slot, btn) {
+      chosenSlot = slot;
+      document.querySelectorAll('.slot').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+
+      document.getElementById('form').style.display = 'block';
+      document.getElementById('team').value = '';
+      document.getElementById('telegram').value = '';
+      document.getElementById('msg').textContent = '';
+
+      const label = slot.date
+        ? formatDate(slot.date) + ' ' + slot.time
+        : slot.time;
+      tg.MainButton.setText('Забронировать ' + label);
+      tg.MainButton.show();
+    }
+
+    // ===== Бронирование: напрямую в таблицу =====
+    async function book() {
+      const msg = document.getElementById('msg');
+      const btn = document.getElementById('book-btn');
+
+      if (!chosenSlot) {
+        msg.textContent = 'Сначала выберите время';
+        msg.style.color = 'red';
+        return;
+      }
+
+      const team = document.getElementById('team').value.trim();
+      const telegram = document.getElementById('telegram').value.trim();
+
+      if (!team) {
+        msg.textContent = '⚠️ Укажите название команды';
+        msg.style.color = 'red';
+        return;
+      }
+      if (!telegram) {
+        msg.textContent = '⚠️ Укажите ваш Telegram (@username или телефон)';
+        msg.style.color = 'red';
+        return;
+      }
+
+      btn.disabled = true;
+      msg.textContent = 'Бронируем...';
+      msg.style.color = '';
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            sheet: chosenSlot.sheet,
+            row: chosenSlot.row,
+            team: team,
+            phone: telegram,
+            name: tg.initDataUnsafe?.user?.first_name || 'Гость',
+            telegram_id: tg.initDataUnsafe?.user?.id || '',
+            username: tg.initDataUnsafe?.user?.username || ''
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+          // Сначала обновляем интерфейс (showSheet очистит msg),
+          // потом показываем сообщение — так его не затрёт
+          allSlots = allSlots.filter(s =>
+            !(s.sheet === chosenSlot.sheet && s.row === chosenSlot.row));
+          const booked = chosenSlot;
+          chosenSlot = null;
+          document.getElementById('form').style.display = 'none';
+          tg.MainButton.hide();
+          showSheet(currentSheet);
+
+          msg.textContent = '✅ Забронировано! Слот ваш: ' +
+            (booked.date ? formatDate(booked.date) + ' ' : '') + booked.time;
+          msg.style.color = 'green';
+        } else {
+          msg.textContent = data.reason || 'Ошибка бронирования';
+          msg.style.color = 'red';
+        }
+      } catch (e) {
+        msg.textContent = 'Ошибка связи с таблицей. Попробуйте ещё раз.';
+        msg.style.color = 'red';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
