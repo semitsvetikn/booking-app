@@ -15,7 +15,7 @@
     .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
     .slot { padding: 10px 8px; border-radius: 8px; border: 1px solid #8888aa55; text-align: center; cursor: pointer; background: var(--tg-theme-secondary-bg-color, #f0f0f0); color: var(--tg-theme-text-color, #000); }
     .slot.selected { background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border-color: transparent; }
-    #form { margin-top: 16px; display: none; }
+    #form { margin-top: 16px; }
     #form input { width: 100%; padding: 10px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ccc; margin-bottom: 8px; font-size: 16px; }
     #form button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); font-size: 16px; }
     #form button:disabled { opacity: 0.6; }
@@ -41,22 +41,36 @@
   <div id="slots" class="slot-grid hidden"></div>
 
   <!-- Шаг 4: данные команды -->
-  <div id="form">
+  <div id="form" class="hidden">
     <input id="team" placeholder="Название команды">
     <input id="telegram" placeholder="Ваш Telegram (@username или телефон)">
     <button id="book-btn" onclick="book()">Забронировать</button>
-    <p id="msg"></p>
   </div>
+
+  <!-- Сообщение живёт ВНЕ формы: его не скрывает showSheet -->
+  <p id="msg"></p>
 
   <script>
     // === ВСТАВЬТЕ СЮДА ВАШ URL СКРИПТА ИЗ ШАГА 3 ===
-    // Нужен только для показа списка свободных слотов.
-    // Бронирование идёт через этот URL.
-    const API = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec';
+    const API = 'https://script.google.com/macros/s/AKfycbwyUzCYsnpB8FBdNWM4KEWQD3qp-FTUUUP-QfveWIzGryXBMxpkvTRcTe3Jux-Rv71n1A/exec';
 
     const tg = Telegram.WebApp;
     tg.ready();
     tg.expand();
+
+    // Надёжное получение пользователя: сначала initDataUnsafe,
+    // если пуст — разбираем initData (так бывает на некоторых клиентах)
+    function getTgUser() {
+      const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+      if (u && u.id) return u;
+      if (tg.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData);
+          return JSON.parse(params.get('user') || 'null');
+        } catch (e) {}
+      }
+      return null;
+    }
 
     let allSlots = [];
     let currentSheet = 'Эффективность';
@@ -116,7 +130,7 @@
 
     // Дата: «Tue Nov 10 2026 00:00:00 GMT+0300» → «2026-11-10»
     // «2026-11-10» → «2026-11-10»; «10.11.2026» → «2026-11-10»
-    // Годы ≤ 1900 («Sat Dec 30 1899...») считаем «времени без даты» → пусто
+    // Годы ≤ 1900 («Sat Dec 30 1899...») считаем «временем без даты» → пусто
     function extractDate(v) {
       const s = String(v || '').trim();
       if (!s) return '';
@@ -162,8 +176,7 @@
     function showSheet(name) {
       currentSheet = name;
       chosenSlot = null;
-      document.getElementById('form').style.display = 'none';
-      document.getElementById('msg').textContent = '';
+      document.getElementById('form').classList.add('hidden');
       tg.MainButton.hide();
 
       document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
@@ -228,7 +241,7 @@
     // ===== Шаг 2: выбор времени по дате =====
     function filterByDate() {
       chosenSlot = null;
-      document.getElementById('form').style.display = 'none';
+      document.getElementById('form').classList.add('hidden');
       tg.MainButton.hide();
 
       const date = document.getElementById('date-select').value;
@@ -247,7 +260,7 @@
       document.querySelectorAll('.slot').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
 
-      document.getElementById('form').style.display = 'block';
+      document.getElementById('form').classList.remove('hidden');
       document.getElementById('team').value = '';
       document.getElementById('telegram').value = '';
       document.getElementById('msg').textContent = '';
@@ -288,6 +301,8 @@
       msg.textContent = 'Бронируем...';
       msg.style.color = '';
 
+      const user = getTgUser();
+
       try {
         const res = await fetch(API, {
           method: 'POST',
@@ -297,25 +312,22 @@
             row: chosenSlot.row,
             team: team,
             phone: telegram,
-            name: tg.initDataUnsafe?.user?.first_name || 'Гость',
-            telegram_id: tg.initDataUnsafe?.user?.id || '',
-            username: tg.initDataUnsafe?.user?.username || ''
+            name: (user && user.first_name) || 'Гость',
+            telegram_id: (user && user.id) || '',
+            username: (user && user.username) || ''
           })
         });
 
         const data = await res.json();
 
         if (data.ok) {
-          // Сначала обновляем интерфейс (showSheet очистит msg),
-          // потом показываем сообщение — так его не затрёт
-          allSlots = allSlots.filter(s =>
-            !(s.sheet === chosenSlot.sheet && s.row === chosenSlot.row));
           const booked = chosenSlot;
           chosenSlot = null;
-          document.getElementById('form').style.display = 'none';
+          document.getElementById('form').classList.add('hidden');
           tg.MainButton.hide();
           showSheet(currentSheet);
 
+          // msg вынесен за пределы формы — showSheet его не скрывает
           msg.textContent = '✅ Забронировано! Слот ваш: ' +
             (booked.date ? formatDate(booked.date) + ' ' : '') + booked.time;
           msg.style.color = 'green';
