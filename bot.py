@@ -17,8 +17,8 @@ from aiogram.types import (
 
 import os
 TOKEN = os.environ.get('BOT_TOKEN', '')
-API_URL = 'https://script.google.com/macros/s/AKfycbwz_ROGroPgRbFUjLb87tsg_8mXf_WYjRraGIaha5OuYMaIwbg4CYr4hS8OIOK_gkBEUw/exec';  # ссылка из script.google
-WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=4' # ссылка из Netlify
+API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec';  # ссылка из script.google
+WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=5' # ссылка из Netlify
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -34,8 +34,8 @@ async def start(message: Message):
         )]],
     )
     await message.answer(
-        'Привет! Здесь бронируются слоты для команд.\n\n'
-        'Нажмите кнопку «Забронировать», выберите направление, '
+        'Привет! Здесь бронируются слоты для команд на онлайн-пичти Академии Финтеха.\n\n'
+        'Нажмите кнопку «Забронировать», выберите задачц, '
         'дату и время — бронь запишется сразу из мини-аппа.',
         reply_markup=kb,
     )
@@ -45,11 +45,11 @@ async def start(message: Message):
 async def help_cmd(message: Message):
     await message.answer(
       
-        '👋 Привет! Здесь бронируются слоты для команд.\n\n'
+        '👋 Привет! Здесь бронируются слоты для команд на онлайн-пичти Академии Финтеха.\n\n'
         '📅 Как забронировать:\n'
         '1. Нажмите кнопку «Забронировать» слева — откроется мини-апп.\n'
-        '2. Выберите направление, время и впишите название команды.\n'
-        '3. Нажмите «Забронировать» — вернётесь в чат.\n'
+        '2. Выберите задачу, время и впишите название команды, Имя и контакт.\n'
+        '3. Нажмите «Забронировать» и возвращайтесь в чат.\n'
         '⏳ Слот закрепляется только после отправки.\n'
         '🔄 Начать заново: /start'
     )
