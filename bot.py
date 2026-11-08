@@ -3,14 +3,14 @@ import os
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 
 # ====== НАСТРОЙКИ
 
 import os
 TOKEN = os.environ.get('BOT_TOKEN', '')
 API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec';  # ссылка из script.google
-WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=8' # ссылка из Netlify
+WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=9' # ссылка из Netlify
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -24,7 +24,8 @@ async def start(message: Message):
         'Нажмите кнопку «Бронирование» внизу чата (рядом с полем ввода) — '
         'откроется окно, где нужно выбрать задачу, дату, время и указать '
         'название команды. Бронь запишется сразу, а подтверждение придёт '
-        'сообщением от бота.'
+        'сообщением от бота.',
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 
@@ -38,7 +39,8 @@ async def help_cmd(message: Message):
         '2. Выберите задачу, время и впишите название команды, Имя и контакт.\n'
         '3. Нажмите «Забронировать» и возвращайтесь в чат.\n'
         '⏳ Слот закрепляется только после отправки.\n'
-        '🔄 Начать заново: /start'
+        '🔄 Начать заново: /start',
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 
