@@ -7,10 +7,18 @@ from aiogram.types import Message, ReplyKeyboardRemove
 
 # ====== НАСТРОЙКИ
 
-import os
+# Токен берём из переменной окружения, а не из кода — так безопасно.
+# Перед запуском: set BOT_TOKEN=ваш-токен   (Windows cmd)
 TOKEN = os.environ.get('BOT_TOKEN', '')
-API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec';  # ссылка из script.google
-WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=9' # ссылка из Netlify
+
+# Бронь отправляет мини-апп напрямую в Apps Script, поэтому боту ссылки
+# на скрипт и на страницу не нужны. Единственный вход в мини-апп —
+# кнопка меню «Бронирование», её адрес задаётся в @BotFather:
+# Bot Settings → Menu Button → https://dazzling-tarsier-eb2361.netlify.app/?v=10
+#
+# На случай, если ссылки понадобятся снова:
+# API_URL = 'https://script.google.com/macros/s/AKfycbx6ofCXATpfw414ebLe5etnm5-X6x00UM_FdRqPQyGXZYcc9N5vghSyf56jkScsizgohQ/exec'
+# WEBAPP_URL = 'https://dazzling-tarsier-eb2361.netlify.app/?v=10'
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -54,6 +62,7 @@ async def fallback(message: Message):
 
 
 async def main():
+    print('Запущен актуальный bot.py: клавиатура отключена, вход — через кнопку меню')
     await dp.start_polling(bot)
 
 
